@@ -192,10 +192,30 @@ private:
 
 	}
 
+/*
+	the insert operation mainly consists of 2 steps:copy up and push up
+
+	in leaf level:
+		the leaf has space:
+			insert ,return NULL
+		the leaf is full:
+			insert ,split(d and d+1) ,and return the new node to the parent(copy up).
+			the parent will insert the key and pointer to this new node
+
+	in node level:
+		if the return node is not empty:
+			the node has space:
+				insert a new key and pointer to the return node
+				return NULL;
+			the node is full:
+				insert , and split(d and d) ,make a new node (1) to this two child split node, 
+				and push the new node up(push up)
+
+*/
+
 	TreeNode * defalut_insert(const int & key,TreeNode * ptr){
 
 		if(ptr -> isLeaf){ 
-                           // leaf link?
 			ptr -> insertKey(key);
 
 			if( ptr -> m <= 2 * d ) 
@@ -206,7 +226,6 @@ private:
 				t -> insertKey(ptr -> popKey());
 			ptr -> makeLink(t);
 			return t; 
-
 		}
 
 		//non-leaf node
@@ -227,29 +246,57 @@ private:
 
 		//child split
 		ptr -> insertKey(tmp -> key[0]);
+		if(!tmp -> isLeaf)
+			tmp -> deleteKey(tmp -> frontKey());
 		ptr -> insertPointer(tmp);
+
 		if(ptr -> m <= 2 * d)
 			return NULL; // can be put into current node
 
 		// split current node
 		TreeNode * newT = new TreeNode(false);
-		for(int i = 0 ; i < d ; i ++ ){
+		for(int i = 0 ; i < d + 1; i ++ ){
 			newT -> insertKey(ptr -> popKey());
 			newT -> insertPointer(ptr -> popPointer());
 		}
-		newT -> insertPointer(ptr -> popPointer());
 
-		TreeNode * newNode = new TreeNode(false);
-		newNode -> insertKey(ptr -> popKey());
-		newNode -> insertPointer(ptr);
-		newNode -> insertPointer(newT);
+		if(ptr == root){
+			TreeNode * newRoot = new TreeNode(false);
+			newRoot -> insertKey(newT -> popFrontKey());
+			newRoot -> insertPointer(ptr);
+			newRoot -> insertPointer(newT);
+			root = newRoot;
+		}
 
-		if(ptr == root)
-			root = newNode;
-
-		return newNode;
+		return newT;
 
 	}	
+
+
+/*
+	leaf level:
+		the leaf has space : delete ((return NULL))
+		the leaf doesn't have enough space while the siblings have:
+			delete , redistribute , update parent(copy up) (return NULL)
+		the leaf doesn't have enoguh space and the siblings hasn't either: 
+			delete , merge(sibling) , delete one parent node , and iterate to the parent to see whether the
+			parent node has enough space
+
+	non-leaf level:
+		the node has space : return NULL
+		the node doesn't has enough space while the siblings have:
+			redistribute and update parent node(exchange this node and it's parent value),return NULL
+		the node doesn't have enoguh space and the siblings hasn't either: 
+			merge , pull down the parent node(copy and delete one of the parent key,delete one of the parent pointer),
+			and iterate to the parent to see whether the parent node has enough space
+
+	it's not just pull down and copy up process, while the update parent step propagate at most one level,
+	and the pull down step may propogate to the root.
+
+	merge:the right node is moved into the left node.
+
+	caution:siling means the node who has the same parent as this node and they are adjacen(left or right)
+*/
 
 	TreeNode * default_Delete(const int & key, TreeNode * ptr, TreeNode * par){
 
@@ -427,6 +474,7 @@ public:
 			}
 			cout << endl;
 		}
+
 	}
 };
 
@@ -453,9 +501,19 @@ int main(){
 
 	T.insert(27);
 	T.insert(29);
+	
 	T.insert(31);
+	T.insert(18);
+	T.insert(21);
+	T.insert(23);
+	T.insert(32);
+	T.insert(25);
+	T.insert(28);
+	T.insert(33);
+	T.insert(34);
+	T.insert(35);
 
- 	T.Delete(5);
+ 	/*T.Delete(5);
  	T.Delete(13);
  	T.Delete(16);
  	T.Delete(30);
@@ -470,29 +528,11 @@ int main(){
  	T.Delete(27);
 
  	T.insert(25);
- 	T.insert(26);
-
-/*
-	---------------------
-	|  11    |    20    |
-	---------------------
-
-  -------	 -----------   ---------
-  | 5,10 |   | 11,12,13|   |20,30,40|
-  --------   -----------   ----------
+ 	T.insert(26);*/
 
 
-*/
  	
-    /*TreeNode * t = T.root -> pointer[0] -> pointer[0];
-    while(t){
-    	for(int i = 0 ; i < t -> m ; i ++ )
-    		cout << t -> key[i] << "   ";
-    	cout << ",";
-    	t = t -> right; 
-    }
-    cout << endl;*/
-
+ 
    T.levelTraversal();
 
 }
