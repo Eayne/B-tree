@@ -112,6 +112,24 @@ public:
 
 	}
 
+	bool deletePointer(TreeNode * t){
+
+		bool found = 0;
+		for(int i = 0 ; i < pm ; i ++ ){
+			if(found){
+				pointer[i-1] = pointer[i];
+				continue;
+			}
+			if(pointer[i] == t){
+				found = 1;
+				free(pointer[i]);
+			}
+		}
+		pm -= found;
+		return found;
+
+	}
+
 	int backKey(){
 
 		return key[m - 1];
@@ -159,8 +177,8 @@ private:
 
 	TreeNode * defalut_insert(const int & key,TreeNode * ptr){
 
-		if(ptr -> isLeaf){ //root initial ?
-
+		if(ptr -> isLeaf){ 
+                           // leaf link?
 			ptr -> insertKey(key);
 
 			if( ptr -> m <= 2 * d ) 
@@ -170,7 +188,7 @@ private:
 			for(int i = 0 ; i < d + 1 ; i ++ )
 				t -> insertKey(ptr -> popKey());
 			ptr -> makeLink(t);
-			return t; // 
+			return t; 
 
 		}
 
@@ -216,28 +234,111 @@ private:
 
 	}	
 
-/*	TreeNode * defalut_delete(const int & key, TreeNode * ptr, TreeNode * par){
+	TreeNode * default_Delete(const int & key, TreeNode * ptr, TreeNode * par){
 
 		if(ptr -> isLeaf){ //root -> isLeaf recover
 			if(!ptr -> deleteKey(key) || ptr -> m >= d || ptr == root)
 				return NULL;
+			//redistribution
 			for(int i = 0 ; i < par -> pm ; i ++ ){
 				if(par -> pointer[i] == ptr -> left && ptr -> left -> m > d){
 					ptr -> insertKey(ptr -> left -> popKey());
 					par -> key[i+1] = ptr -> frontKey();
 					return NULL;
 				}
-				else if(par -> pointer[i] == ptr -> right && ptr -> right -> m > d){
+				if(par -> pointer[i] == ptr -> right && ptr -> right -> m > d){
 					ptr -> insertKey(ptr -> right -> popFrontKey());
 					par -> key[i-1] = ptr -> right -> frontKey();
 					return NULL;
 				}
 			}
-
+			//merge
+			for(int i = 0 ; i < par -> pm ; i ++ ){
+				if(par -> pointer[i] == ptr -> left){
+					for(int j = 0 ; j < ptr -> m ; j ++ )
+						ptr -> left -> insertKey(ptr -> popKey());
+					ptr -> left -> right = ptr -> right;
+					ptr -> right -> left = ptr -> left;
+					par -> deletePointer(ptr);
+					par -> deleteKey(par -> key[i]);
+					break;
+				}
+				if(par -> pointer[i] == ptr -> right){
+					for(int j = 0 ; j < ptr -> right -> m ; j ++ )
+						ptr -> insertKey(ptr -> right -> popKey());
+					ptr -> right = ptr -> right -> right;
+					if(ptr -> right -> right)
+						ptr -> right -> right -> left = ptr;
+					par -> deletePointer(par -> pointer[i]);
+					par -> deleteKey(par -> key[i-1]);
+					break;
+				}
+			}
+			return ptr;
 
 		}
 
-	}*/
+		TreeNode * child;
+		if(key < ptr -> key[0])
+			child = default_Delete(key,ptr -> pointer[0],ptr);		
+		else if(key > ptr -> key[ptr -> m - 1])
+			child = default_Delete(key,ptr -> pointer[ptr -> m],ptr);
+		else for(int i = 0 ; i < ptr -> m - 1 ; i ++ )
+				if(key >= ptr -> key[i] && key < ptr -> key[i+1] ){
+					child = default_Delete(key, ptr -> pointer[i + 1],ptr);
+					break;
+				}
+
+		if(ptr == root)
+			return root;
+
+		//redistribution
+		if(!child || ptr -> m >= d) return NULL;
+		for(int i = 0 ; i < par -> pm ; i ++ ){
+			if(par -> pointer[i+1] == ptr && par -> pointer[i] -> m > d){ //left
+				ptr -> insertKey(par -> key[i]);
+				ptr -> insertPointer(par -> pointer[i] -> popPointer());
+				par -> deleteKey(par -> key[i]); 
+				par -> insertKey(par -> pointer[i] -> popKey()); 
+				return NULL;
+			}
+			if(par -> pointer[i-1] == ptr && par -> pointer[i] -> m > d){ //right
+				ptr -> insertKey(par -> key[i-1]);
+				ptr -> insertPointer(par -> pointer[i] -> pointer[0]);
+				par -> deleteKey(par -> key[i-1]);
+				par -> insertKey(par -> pointer[i] -> key[0]);
+				par -> pointer[i] -> deleteKey(par -> pointer[i] -> key[0]);
+				par -> pointer[i] -> deletePointer(par -> pointer[i] -> pointer[0]);
+				return NULL;
+			}
+		}
+
+		//merge
+		for(int i = 0 ; i < par -> pm ; i ++ ){
+			if(par -> pointer[i+1] == ptr){ //left
+				par -> pointer[i] -> insertKey(par -> key[i]);
+				for(int j = 0 ; j < ptr -> m ; j ++ )
+					par -> pointer[i] -> insertKey(ptr -> popKey());
+				for(int j = 0 ; j < ptr -> pm ; j ++ )
+					par -> pointer[i] -> insertPointer(ptr -> popPointer());
+				par -> deleteKey(par -> key[i]);
+				par -> deletePointer(ptr);
+				break;
+			}
+			if(par -> pointer[i-1] == ptr){ // right
+				ptr -> insertKey(par -> key[i-1]);
+				for(int j = 0 ; j < par -> pointer[i] -> m ; j ++ )
+					ptr -> insertKey(par -> pointer[i] -> popKey());
+				for(int j = 0 ; j < par -> pointer[i] -> pm ; j ++ )
+					ptr -> insertPointer(par -> pointer[i] -> popPointer());
+				par -> deleteKey(par -> key[i-1]);
+				par -> deletePointer(par -> pointer[i]);
+				break;
+			}
+		}
+		return par;
+
+	}
 
 public:
 
@@ -261,17 +362,22 @@ public:
 
 	void insert(const int & key){
 
-		if(root -> isLeaf && root -> m == 2 * d)
-			root -> isLeaf = false; //
-		defalut_insert(key,root);
+		TreeNode * child = defalut_insert(key,root);
+		if(root -> isLeaf && child && child != root){
+			TreeNode * newRoot = new TreeNode(false);
+			newRoot -> insertKey(child -> key[0]);
+			newRoot -> insertPointer(root);
+			newRoot -> insertPointer(child);
+			root = newRoot;
+		}
 
 	}
 
-	/*void Delete(const int & key){
+	void Delete(const int & key){
 		
-		default_delete(key,root,NULL);
+		default_Delete(key,root,NULL);
 
-	}*/
+	}
 
 
 };
@@ -280,33 +386,27 @@ int main(){
 
 	BPlusTree T;
 
-	TreeNode * tt[5];
-	for(int i = 0 ; i < 5 ; i ++ )
-		tt[i] = new TreeNode(true);
-	tt[0] -> insertKey(5);
-	tt[1] -> insertKey(10);
-	tt[2] -> insertKey(20);
-	tt[3] -> insertKey(30);
-	tt[4] -> insertKey(40);
-
-	T.root -> insertKey(10);
-	T.root -> insertKey(20);
-	T.root -> insertKey(30);
-	T.root -> insertKey(40);
-	T.root -> insertPointer(tt[0]);
-	T.root -> insertPointer(tt[1]);
-	T.root -> insertPointer(tt[2]);
-	T.root -> insertPointer(tt[4]);
-	T.root -> insertPointer(tt[3]);
-
 	T.insert(5);
-	T.insert(6);
-	T.insert(7);
-	T.insert(8);
-	T.insert(9);
+	T.insert(10);
+	T.insert(20);
+	T.insert(30);
+	T.insert(40);
+	T.insert(11);
 	T.insert(12);
 	T.insert(13);
-	T.insert(14); 
+
+/*
+	---------------------
+	|  11    |    20    |
+	---------------------
+
+  -------	 -----------   ---------
+  | 5,10 |   | 11,12,13|   |20,30,40|
+  --------   -----------   ----------
+
+
+*/
+	
 	/*test case problem: the node may have element less than d*/
 
 /*
