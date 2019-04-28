@@ -1,8 +1,8 @@
 #include <iostream>
+#include <queue>
 #include <vector>
 #define d 2 //degree
 using namespace std;
-int flag = 0;
 class TreeNode{
 
 public:
@@ -84,6 +84,23 @@ public:
 
 	}
 
+	bool popPointer(TreeNode * t){ //only move ,not free
+
+		bool found = 0;
+		for(int i = 0 ; i < pm ; i ++ ){
+			if(found){
+				pointer[i-1] = pointer[i];
+				continue;
+			}
+			if(pointer[i] == t){
+				found = 1;
+			}
+		}
+		pm -= found;
+		return found;
+
+	}
+
 	//insert after t1.
 	void makeLink(TreeNode * t2){
 
@@ -95,7 +112,7 @@ public:
 
 	}
 
-	bool deleteKey(const int & t){
+	bool deleteKey(const int & t){ //free
 
 		bool found = 0;
 		for(int i = 0 ; i < m ; i ++ ){
@@ -106,7 +123,7 @@ public:
 			if(key[i] == t){
 				found = 1;
 			}
-		}
+		} 
 		m -= found;
 		return found;
 
@@ -196,7 +213,7 @@ private:
 		TreeNode * tmp;
 		if(key < ptr -> key[0])
 			tmp = defalut_insert(key, ptr -> pointer[0]);
-		else if(key > ptr -> key[ptr -> m - 1])
+		else if(key >= ptr -> key[ptr -> m - 1])
 			tmp = defalut_insert(key, ptr -> pointer[ptr -> m]);
 		else
 			for(int i = 0 ; i < ptr -> m - 1 ; i ++ )
@@ -236,14 +253,14 @@ private:
 
 	TreeNode * default_Delete(const int & key, TreeNode * ptr, TreeNode * par){
 
-		if(ptr -> isLeaf){ //root -> isLeaf recover
+		if(ptr -> isLeaf){ 
 			if(!ptr -> deleteKey(key) || ptr -> m >= d || ptr == root)
 				return NULL;
 			//redistribution
 			for(int i = 0 ; i < par -> pm ; i ++ ){
 				if(par -> pointer[i] == ptr -> left && ptr -> left -> m > d){
 					ptr -> insertKey(ptr -> left -> popKey());
-					par -> key[i+1] = ptr -> frontKey();
+					par -> key[i] = ptr -> frontKey();
 					return NULL;
 				}
 				if(par -> pointer[i] == ptr -> right && ptr -> right -> m > d){
@@ -255,20 +272,25 @@ private:
 			//merge
 			for(int i = 0 ; i < par -> pm ; i ++ ){
 				if(par -> pointer[i] == ptr -> left){
-					for(int j = 0 ; j < ptr -> m ; j ++ )
+					int size = ptr -> m;
+					for(int j = 0 ; j < size ; j ++ )
 						ptr -> left -> insertKey(ptr -> popKey());
 					ptr -> left -> right = ptr -> right;
-					ptr -> right -> left = ptr -> left;
+					if(ptr -> right)
+						ptr -> right -> left = ptr -> left;
 					par -> deletePointer(ptr);
 					par -> deleteKey(par -> key[i]);
+					ptr = par -> pointer[i];
 					break;
 				}
 				if(par -> pointer[i] == ptr -> right){
-					for(int j = 0 ; j < ptr -> right -> m ; j ++ )
+					int size = ptr -> right -> m;
+					for(int j = 0 ; j < size ; j ++ ){
 						ptr -> insertKey(ptr -> right -> popKey());
+					}
 					ptr -> right = ptr -> right -> right;
-					if(ptr -> right -> right)
-						ptr -> right -> right -> left = ptr;
+					if(ptr -> right)
+						ptr  -> right -> left = ptr;
 					par -> deletePointer(par -> pointer[i]);
 					par -> deleteKey(par -> key[i-1]);
 					break;
@@ -281,7 +303,7 @@ private:
 		TreeNode * child;
 		if(key < ptr -> key[0])
 			child = default_Delete(key,ptr -> pointer[0],ptr);		
-		else if(key > ptr -> key[ptr -> m - 1])
+		else if(key >= ptr -> key[ptr -> m - 1])
 			child = default_Delete(key,ptr -> pointer[ptr -> m],ptr);
 		else for(int i = 0 ; i < ptr -> m - 1 ; i ++ )
 				if(key >= ptr -> key[i] && key < ptr -> key[i+1] ){
@@ -289,8 +311,12 @@ private:
 					break;
 				}
 
-		if(ptr == root)
+		if(ptr == root){
+			if(!root -> m){
+				root = child;
+			}
 			return root;
+		}
 
 		//redistribution
 		if(!child || ptr -> m >= d) return NULL;
@@ -308,35 +334,40 @@ private:
 				par -> deleteKey(par -> key[i-1]);
 				par -> insertKey(par -> pointer[i] -> key[0]);
 				par -> pointer[i] -> deleteKey(par -> pointer[i] -> key[0]);
-				par -> pointer[i] -> deletePointer(par -> pointer[i] -> pointer[0]);
+				par -> pointer[i] -> popPointer(par -> pointer[i] -> pointer[0]);
 				return NULL;
 			}
 		}
 
 		//merge
 		for(int i = 0 ; i < par -> pm ; i ++ ){
-			if(par -> pointer[i+1] == ptr){ //left
+			if(i < par -> pm - 1 && par -> pointer[i+1] == ptr){ //left
 				par -> pointer[i] -> insertKey(par -> key[i]);
-				for(int j = 0 ; j < ptr -> m ; j ++ )
+				int size = ptr -> m;
+				for(int j = 0 ; j < size ; j ++ )
 					par -> pointer[i] -> insertKey(ptr -> popKey());
-				for(int j = 0 ; j < ptr -> pm ; j ++ )
+				size = ptr -> pm;
+				for(int j = 0 ; j < size ; j ++ )
 					par -> pointer[i] -> insertPointer(ptr -> popPointer());
 				par -> deleteKey(par -> key[i]);
 				par -> deletePointer(ptr);
+				ptr = par -> pointer[i];
 				break;
 			}
-			if(par -> pointer[i-1] == ptr){ // right
+			if(i >= 0 && par -> pointer[i-1] == ptr){ // right
 				ptr -> insertKey(par -> key[i-1]);
-				for(int j = 0 ; j < par -> pointer[i] -> m ; j ++ )
+				int size = par -> pointer[i] -> m;
+				for(int j = 0 ; j < size ; j ++ )
 					ptr -> insertKey(par -> pointer[i] -> popKey());
-				for(int j = 0 ; j < par -> pointer[i] -> pm ; j ++ )
+				size = par -> pointer[i] -> pm;
+				for(int j = 0 ; j < size ; j ++ )
 					ptr -> insertPointer(par -> pointer[i] -> popPointer());
 				par -> deleteKey(par -> key[i-1]);
 				par -> deletePointer(par -> pointer[i]);
 				break;
 			}
 		}
-		return par;
+		return ptr;
 
 	}
 
@@ -379,21 +410,67 @@ public:
 
 	}
 
-
+	void levelTraversal(){
+		
+		queue<TreeNode*>Q;
+		Q.push(root);
+		while(!Q.empty()){
+			int s = Q.size();
+			for(int i = 0 ; i < s ; i ++ ){
+				for(int i = 0 ; i < Q.front() -> m ; i ++ )
+					cout << Q.front() -> key[i] << " ";
+				for(int i = 0 ; i < Q.front() -> pm ; i ++ )
+					Q.push(Q.front() -> pointer[i]);
+				if(i != s - 1)
+				cout << "  ,  ";
+				Q.pop();
+			}
+			cout << endl;
+		}
+	}
 };
 
 int main(){
 
 	BPlusTree T;
 
-	T.insert(5);
-	T.insert(10);
-	T.insert(20);
-	T.insert(30);
-	T.insert(40);
-	T.insert(11);
-	T.insert(12);
+	T.insert(2);
 	T.insert(13);
+	T.insert(17);
+	T.insert(24);
+	T.insert(30);
+
+	T.insert(3);
+	T.insert(5);
+	T.insert(7);
+
+	T.insert(14);
+	T.insert(16);
+	
+	T.insert(19);
+	T.insert(20);
+	T.insert(22);
+
+	T.insert(27);
+	T.insert(29);
+	T.insert(31);
+
+ 	T.Delete(5);
+ 	T.Delete(13);
+ 	T.Delete(16);
+ 	T.Delete(30);
+ 	T.Delete(2);
+ 	T.Delete(31);
+ 	T.Delete(17);
+ 	T.Delete(3);
+ 	T.Delete(22);
+ 	T.Delete(14);
+ 	T.Delete(19);
+ 	T.Delete(20);
+ 	T.Delete(27);
+
+ 	T.insert(25);
+ 	T.insert(26);
 
 /*
 	---------------------
@@ -406,14 +483,16 @@ int main(){
 
 
 */
-	
-	/*test case problem: the node may have element less than d*/
+ 	
+    /*TreeNode * t = T.root -> pointer[0] -> pointer[0];
+    while(t){
+    	for(int i = 0 ; i < t -> m ; i ++ )
+    		cout << t -> key[i] << "   ";
+    	cout << ",";
+    	t = t -> right; 
+    }
+    cout << endl;*/
 
-/*
-	cout << T.root -> key[0] << endl;
-	cout << T.root -> pointer[0] -> key[0] << endl;
-	cout << T.root -> pointer[0] -> key[1] << endl;
-	cout << T.root -> pointer[1] -> key[0] << endl;
-	cout << T.root -> pointer[1] -> key[1] << endl;*/
+   T.levelTraversal();
 
 }
