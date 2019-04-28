@@ -360,6 +360,7 @@ private:
 
 		if(ptr == root){
 			if(!root -> m){
+				free(root);
 				root = child;
 			}
 			return root;
@@ -513,7 +514,7 @@ int main(){
 	T.insert(34);
 	T.insert(35);
 
- 	/*T.Delete(5);
+ 	T.Delete(5);
  	T.Delete(13);
  	T.Delete(16);
  	T.Delete(30);
@@ -528,7 +529,7 @@ int main(){
  	T.Delete(27);
 
  	T.insert(25);
- 	T.insert(26);*/
+ 	T.insert(26);
 
 
  	
